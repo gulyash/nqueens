@@ -2,34 +2,33 @@ import random
 
 
 class Solver_8_queens:
-    def __init__(self, pop_size=4, cross_prob=0.95, mut_prob=0.10):
+    def __init__(self, pop_size=250, cross_prob=0.95, mut_prob=0.10):
         self.pop_size = pop_size
         self.cross_prob = cross_prob
         self.mut_prob = mut_prob
         self.desk_size = 8
+        self.bit_num = 24
 
-    def solve(self, min_fitness=0.9, max_epochs=1000):
+    def solve(self, min_fitness=27.5, max_epochs=1000):
         self.epoch_num = 0
         self.min_fitness = min_fitness
         self.max_epochs = max_epochs
         self.population = self.generate_population()
-        is_solved = False
 
+        is_solved = False
         while not is_solved and self.epoch_num < self.max_epochs:
             self.parent_pool = self.roulette()
-            self.crossover()
-            self.mutate()
+            self.new_generation = self.crossover()
+            self.new_generation = self.mutate(self.new_generation)
             self.epoch_num += 1
+            self.new_generation.sort(key=lambda b: b.fitness, reverse=True)
             is_solved, solution = self.check()
-            self.population.sort(key=lambda b: b.fitness())
+        if solution is None:
             solution = self.population[0]
-            print('Epoch: ', self.epoch_num, '; ')
-            for board in self.population:
-                print(board.arrangement, end=' ')
-            print('\nBest fitness: ', self.population[0].fitness())
 
-        self.visualization = solution.arrangement
-        self.best_fit = solution.fitness()
+
+        self.visualization = solution.visualization()
+        self.best_fit = solution.fitness
         return self.best_fit, self.epoch_num, self.visualization
 
     def generate_population(self):
@@ -46,7 +45,7 @@ class Solver_8_queens:
             if pick < self.cross_prob:
                 child = Board(bits=self.child_chromosome(*pair))
                 children.append(child)
-        self.children = children
+        return children
 
     def child_chromosome(self, parent_a, parent_b):
         k = random.randrange(1, self.desk_size - 1)
@@ -54,55 +53,58 @@ class Solver_8_queens:
 
     def roulette(self):
         parent_pool = []
+        fitness_sum = sum(b.fitness for b in self.population)
         for _ in range(len(self.population)):
             pick = random.random()
             num = 0
-            upper_bound = self.population[num].fitness() / sum(b.fitness() for b in self.population)
+            upper_bound = self.population[num].fitness / fitness_sum
             while pick > upper_bound:
                 pick -= upper_bound
                 num += 1
-                upper_bound = self.population[num].fitness() / sum(b.fitness() for b in self.population)
+                upper_bound = self.population[num].fitness / fitness_sum
             parent_pool.append(self.population[num])
         return parent_pool
 
-    def mutate(self):
-        for child in self.children:
+    def mutate(self, pop):
+
+        for child in pop:
             prob = random.random()
             if prob < self.mut_prob:
                 k = random.randrange(len(child.bits))
                 if child.bits[k] == '0':
-                    child.bits = child.bits[:k] + '1' + child.bits[k+1:]
+                    child.bits = child.bits[:k] + '1' + child.bits[k + 1:]
                 else:
-                    child.bits = child.bits[:k] + '0' + child.bits[k+1:]
+                    child.bits = child.bits[:k] + '0' + child.bits[k + 1:]
                 child.arrangement = child.bits_to_arr()
+        return pop
 
     def check(self):
-        for child in self.children:
-            if child.fitness() < self.min_fitness:
-                return True, child
-        self.population = self.children
-        self.children = []
-        return False, None
-
+        for board in self.new_generation:
+            if board.fitness > self.min_fitness:
+                return True, board
+        self.population = self.new_generation
+        self.new_generation = []
+        return False, self.population[0]
 
 
 class Board:
-    def __init__(self, size=8, arrangement = None, bits = None):
+    def __init__(self, size=8, arrangement=None, bits=None):
         if arrangement is None and bits is None:
             self.arrangement = ''.join(str(random.randrange(size)) for _ in range(size))
             self.bits = self.arr_to_bits()
-        elif not arrangement is None:
+        elif arrangement is not None:
             self.arrangement = arrangement
             self.bits = self.arr_to_bits()
-        elif not bits is None:
+        elif bits is not None:
             self.bits = bits
             self.arrangement = self.bits_to_arr()
+        self.fitness = self.fitness()
 
     def arr_to_bits(self):
         return ''.join(str(bin(int(num)))[2:].zfill(3) for num in self.arrangement)
 
     def bits_to_arr(self):
-        list_of_cells_bin = [self.bits[i: i+3] for i in range (0, len(self.bits), 3)]
+        list_of_cells_bin = [self.bits[i: i + 3] for i in range(0, len(self.bits), 3)]
         return ''.join(map(lambda x: str(int(x, 2)), list_of_cells_bin))
 
     def fitness(self):
@@ -120,4 +122,10 @@ class Board:
                 if board[j] == right_upper_diag:
                     conflicts += 1
 
-        return conflicts
+        return 28 - conflicts
+
+    def visualization(self):
+        s = ''
+        for i in self.arrangement:
+            s = s + '+' * int(i) + 'Q' + '+'*(len(self.arrangement) - 1 - int(i)) + '\n'
+        return s
