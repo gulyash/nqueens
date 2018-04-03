@@ -21,7 +21,6 @@ class Solver_8_queens:
             self.new_generation = self.crossover()
             self.new_generation = self.mutate(self.new_generation)
             self.epoch_num += 1
-            self.new_generation.sort(key=lambda b: b.fitness, reverse=True)
             is_solved, solution = self.check()
         if solution is None:
             solution = self.population[0]
@@ -79,12 +78,11 @@ class Solver_8_queens:
         return pop
 
     def check(self):
-        for board in self.new_generation:
-            if board.fitness > self.min_fitness:
-                return True, board
+        self.new_generation.sort(key=lambda b: b.fitness, reverse=True)
         self.population = self.new_generation
         self.new_generation = []
-        return False, self.population[0]
+        best_board = self.population[0]
+        return best_board.fitness > self.min_fitness, best_board
 
 
 class Board:
