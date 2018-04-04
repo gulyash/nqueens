@@ -9,14 +9,13 @@ class Solver_8_queens:
         self.desk_size = 8
         self.bit_num = 24
 
-    def solve(self, min_fitness=27.5, max_epochs=1000):
+    def solve(self, min_fitness=27.5, max_epochs=500):
         self.epoch_num = 0
         self.min_fitness = min_fitness
         self.max_epochs = max_epochs
         self.population = self.generate_population()
         self.population.sort(key=lambda b: b.fitness, reverse=True)
 
-        self.ranking()
         is_solved = False
         while not is_solved and self.epoch_num < self.max_epochs:
             self.parent_pool = self.ranking()
@@ -26,9 +25,6 @@ class Solver_8_queens:
             self.population = self.new_generation
             self.new_generation = []
             is_solved, solution = self.check()
-        if solution is None:
-            solution = self.population[0]
-
 
         self.visualization = solution.visualization()
         self.best_fit = solution.fitness
@@ -46,27 +42,18 @@ class Solver_8_queens:
             pair = random.sample(self.parent_pool, 2)
             pick = random.random()
             if pick < self.cross_prob:
-                child = Board(bits=self.child_chromosome(*pair))
+                child = Board(gray=self.child_chromosome(*pair))
                 children.append(child)
         return children
 
     def child_chromosome(self, parent_a, parent_b):
-        k = random.randrange(1, self.desk_size - 1)
-        return parent_a.bits[:k] + parent_b.bits[k:]
+        # now with brand new homogeneous crossover!
+        gray = []
+        for i in range(self.bit_num):
+            gray.append(random.choice([parent_a.gray[i], parent_b.gray[i]]))
 
-    def roulette(self):
-        parent_pool = []
-        fitness_sum = sum(b.fitness for b in self.population)
-        for _ in range(len(self.population)):
-            pick = random.random()
-            num = 0
-            upper_bound = self.population[num].fitness / fitness_sum
-            while pick > upper_bound:
-                pick -= upper_bound
-                num += 1
-                upper_bound = self.population[num].fitness / fitness_sum
-            parent_pool.append(self.population[num])
-        return parent_pool
+        gray = ''.join(gray)
+        return gray
 
     def ranking(self):
         # we do not perform sorting here
@@ -78,8 +65,6 @@ class Solver_8_queens:
         b = 2 - a
         for i in range(N):
             probs.append((a - (a - b)*(i-1)/(N-1))/N)
-        # print('Probs: ', probs)
-        # print('Sum probs: ', sum(probs))
 
         parent_pool = []
         for _ in range(len(self.population)):
@@ -92,18 +77,17 @@ class Solver_8_queens:
             parent_pool.append(self.population[num])
         return parent_pool
 
-
-
     def mutate(self, pop):
 
         for child in pop:
             prob = random.random()
             if prob < self.mut_prob:
-                k = random.randrange(len(child.bits))
-                if child.bits[k] == '0':
-                    child.bits = child.bits[:k] + '1' + child.bits[k + 1:]
+                k = random.randrange(len(child.gray))
+                if child.gray[k] == '0':
+                    child.gray = child.gray[:k] + '1' + child.gray[k + 1:]
                 else:
-                    child.bits = child.bits[:k] + '0' + child.bits[k + 1:]
+                    child.gray = child.gray[:k] + '0' + child.gray[k + 1:]
+                child.bits = child.gray_to_bits()
                 child.arrangement = child.bits_to_arr()
         return pop
 
@@ -114,15 +98,21 @@ class Solver_8_queens:
 
 
 class Board:
-    def __init__(self, size=8, arrangement=None, bits=None):
-        if arrangement is None and bits is None:
+    def __init__(self, size=8, arrangement=None, bits=None, gray=None):
+        if arrangement is None and bits is None and gray is None:
             self.arrangement = ''.join(str(random.randrange(size)) for _ in range(size))
             self.bits = self.arr_to_bits()
+            self.gray = self.bits_to_gray()
         elif arrangement is not None:
             self.arrangement = arrangement
             self.bits = self.arr_to_bits()
+            self.gray = self.bits_to_gray()
         elif bits is not None:
             self.bits = bits
+            self.arrangement = self.bits_to_arr()
+        elif gray is not None:
+            self.gray = gray
+            self.bits = self.gray_to_bits()
             self.arrangement = self.bits_to_arr()
         self.fitness = self.fitness()
 
@@ -133,11 +123,21 @@ class Board:
         list_of_cells_bin = [self.bits[i: i + 3] for i in range(0, len(self.bits), 3)]
         return ''.join(map(lambda x: str(int(x, 2)), list_of_cells_bin))
 
-    def gray(self):
+    def bits_to_gray(self):
         gray = [int(self.bits[0], 2)]
         for i in range(1, len(self.bits)):
             gray.append(int(self.bits[i-1]) ^ int(self.bits[i]))
         return ''.join(map(str, gray))
+
+    def gray_to_bits(self):
+        bits = []
+        val = int(self.gray[0])
+        bits.append(val)
+        for i in range(1, len(self.gray)):
+            if self.gray[i] == '1':
+                val = 0 if val == 1 else 1
+            bits.append(val)
+        return ''.join(map(str, bits))
 
     def fitness(self):
         conflicts = 0
