@@ -14,15 +14,17 @@ class Solver_8_queens:
         self.min_fitness = min_fitness
         self.max_epochs = max_epochs
         self.population = self.generate_population()
+        self.population.sort(key=lambda b: b.fitness, reverse=True)
 
+        self.ranking()
         is_solved = False
         while not is_solved and self.epoch_num < self.max_epochs:
-            # self.parent_pool = self.roulette()
-            # self.new_generation = self.crossover()
-            # self.new_generation = self.mutate(self.new_generation)
+            self.parent_pool = self.ranking()
+            self.new_generation = self.crossover()
+            self.new_generation = self.mutate(self.new_generation)
             self.epoch_num += 1
-            # self.population = self.new_generation
-            # self.new_generation = []
+            self.population = self.new_generation
+            self.new_generation = []
             is_solved, solution = self.check()
         if solution is None:
             solution = self.population[0]
@@ -65,6 +67,32 @@ class Solver_8_queens:
                 upper_bound = self.population[num].fitness / fitness_sum
             parent_pool.append(self.population[num])
         return parent_pool
+
+    def ranking(self):
+        # we do not perform sorting here
+        # because it is already done for the first population
+        # and for each following generation sorting is performed in the check() function
+        probs = []
+        N = len(self.population)
+        a = random.random() + 1
+        b = 2 - a
+        for i in range(N):
+            probs.append((a - (a - b)*(i-1)/(N-1))/N)
+        # print('Probs: ', probs)
+        # print('Sum probs: ', sum(probs))
+
+        parent_pool = []
+        for _ in range(len(self.population)):
+            pick = random.random()
+            num = 0
+            s = probs[0]
+            while s < pick:
+                num += 1
+                s += probs[num]
+            parent_pool.append(self.population[num])
+        return parent_pool
+
+
 
     def mutate(self, pop):
 
