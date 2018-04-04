@@ -17,12 +17,12 @@ class Solver_8_queens:
 
         is_solved = False
         while not is_solved and self.epoch_num < self.max_epochs:
-            self.parent_pool = self.roulette()
-            self.new_generation = self.crossover()
-            self.new_generation = self.mutate(self.new_generation)
+            # self.parent_pool = self.roulette()
+            # self.new_generation = self.crossover()
+            # self.new_generation = self.mutate(self.new_generation)
             self.epoch_num += 1
-            self.population = self.new_generation
-            self.new_generation = []
+            # self.population = self.new_generation
+            # self.new_generation = []
             is_solved, solution = self.check()
         if solution is None:
             solution = self.population[0]
@@ -104,6 +104,12 @@ class Board:
     def bits_to_arr(self):
         list_of_cells_bin = [self.bits[i: i + 3] for i in range(0, len(self.bits), 3)]
         return ''.join(map(lambda x: str(int(x, 2)), list_of_cells_bin))
+
+    def gray(self):
+        gray = [int(self.bits[0], 2)]
+        for i in range(1, len(self.bits)):
+            gray.append(int(self.bits[i-1]) ^ int(self.bits[i]))
+        return ''.join(map(str, gray))
 
     def fitness(self):
         conflicts = 0
